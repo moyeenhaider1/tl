@@ -1,3 +1,6 @@
+Here’s the same `funding.json` with the curly quote fixed to a straight quote on the bank‐transfer address line. Just replace `<YOUR_…>` placeholders as needed and it will parse fine:
+
+```json
 {
   "$schema": "https://floss.fund/schema/v1.0.0/funding.schema.json#",
   "version": "v1.0.0",
@@ -34,7 +37,7 @@
       {
         "guid": "bank-transfer",
         "type": "bank",
-        "address": "Account Name: MOYEEN HAIDER; Account Number: 004601065667; IFSC: ICIC0000046; Bank & Branch: ICICI Bank, Community Center, Delhi”,
+        "address": "Account Name: MOYEEN HAIDER; Account Number: 004601065667; IFSC: ICIC0000046; Bank & Branch: ICICI Bank, Community Center, Delhi",
         "description": "Bank transfers via NEFT/IMPS—use the above account details."
       },
       {
@@ -85,3 +88,4 @@
     "history": []
   }
 }
+```
