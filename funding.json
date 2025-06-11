@@ -19,12 +19,10 @@
       "name": "TravelLens",
       "description": "A Flutter + Dart mobile app integrating Hugging Face Inference API for object detection, OCR, QA, summarization, translation, and TTS—all in one seamless, sub-5-second experience.",
       "webpageUrl": {
-        "url": "https://github.com/moyeenhaider3/travel_lens",
-        "wellKnown": ""
+        "url": "https://github.com/moyeenhaider3/travel_lens"
       },
       "repositoryUrl": {
-        "url": "https://github.com/moyeenhaider3/travel_lens",
-        "wellKnown": ""
+        "url": "https://github.com/moyeenhaider3/travel_lens"
       },
       "licenses": ["spdx:MIT"],
       "tags": ["flutter", "dart", "object-detection", "OCR", "summarization", "translation", "TTS"]
