@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "491294838741",
+    "project_id": "travellensapp-94d3f",
+    "storage_bucket": "travellensapp-94d3f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:491294838741:android:78617405af8c78d287b75c",
+        "android_client_info": {
+          "package_name": "com.example.travel_lens"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0q_YqC5ZsTlfmVpZkaERHI6mzETslj2M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
