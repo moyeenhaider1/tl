@@ -2,9 +2,9 @@
   "$schema": "https://floss.fund/schema/v1.0.0/funding.schema.json#",
   "version": "v1.0.0",
   "entity": {
-    "type": "project",
+    "type": "individual",
     "role": "maintainer",
-    "name": "TravelLens",
+    "name": "TravelLens Maintainer",
     "email": "business.moyeen@gmail.com",
     "phone": "",
     "description": "TravelLens – Your AI-Powered Visual Travel Companion lets you point your phone camera at any landmark, sign, or menu and instantly detect objects, extract text, answer questions, summarize content, translate results, and play them back in under 5 seconds.",
@@ -26,18 +26,8 @@
         "url": "https://github.com/moyeenhaider3/travel_lens",
         "wellKnown": ""
       },
-      "licenses": [
-        "spdx:MIT"
-      ],
-      "tags": [
-        "flutter",
-        "dart",
-        "object-detection",
-        "OCR",
-        "summarization",
-        "translation",
-        "TTS"
-      ]
+      "licenses": ["spdx:MIT"],
+      "tags": ["flutter", "dart", "object-detection", "OCR", "summarization", "translation", "TTS"]
     }
   ],
   "funding": {
@@ -70,10 +60,7 @@
         "amount": 500,
         "currency": "USD",
         "frequency": "monthly",
-        "channels": [
-          "upi",
-          "email-donations"
-        ]
+        "channels": ["upi", "email-donations"]
       },
       {
         "guid": "developer-time",
@@ -83,9 +70,7 @@
         "amount": 1500,
         "currency": "USD",
         "frequency": "monthly",
-        "channels": [
-          "bank-transfer"
-        ]
+        "channels": ["bank-transfer"]
       },
       {
         "guid": "feature-bounty",
@@ -95,11 +80,7 @@
         "amount": 2000,
         "currency": "USD",
         "frequency": "one-time",
-        "channels": [
-          "bank-transfer",
-          "upi",
-          "email-donations"
-        ]
+        "channels": ["bank-transfer", "upi", "email-donations"]
       }
     ],
     "history": []
