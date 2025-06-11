@@ -1,0 +1,86 @@
+{
+  "$schema": "https://floss.fund/schema/v1.0.0/funding.schema.json#",
+  "version": "v1.0.0",
+  "entity": {
+    "type": "individual",
+    "role": "maintainer",
+    "name": "TravelLens Maintainer",
+    "email": "business.moyeen@gmail.com",
+    "phone": "",
+    "description": "TravelLens – Your AI-Powered Visual Travel Companion lets you point your phone camera at any landmark, sign, or menu and instantly detect objects, extract text, answer questions, summarize content, translate results, and play them back in under 5 seconds.",
+    "webpageUrl": {
+      "url": "https://github.com/moyeenhaider3/travel_lens",
+      "wellKnown": ""
+    }
+  },
+  "projects": [
+    {
+      "guid": "travel-lens",
+      "name": "TravelLens",
+      "description": "A Flutter + Dart mobile app integrating Hugging Face Inference API for object detection, OCR, QA, summarization, translation, and TTS—all in one seamless, sub-5-second experience.",
+      "webpageUrl": {
+        "url": "https://github.com/moyeenhaider3/travel_lens"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/moyeenhaider3/travel_lens"
+      },
+      "licenses": ["spdx:MIT"],
+      "tags": ["flutter", "dart", "object-detection", "OCR", "summarization", "translation", "TTS"]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "bank-transfer",
+        "type": "bank",
+        "address": "Account Name: MOYEEN HAIDER; Account Number: 004601065667; IFSC: ICIC0000046; Bank & Branch: ICICI Bank, Community Center, Delhi",
+        "description": "Bank transfers via NEFT/IMPS—use the above account details."
+      },
+      {
+        "guid": "upi",
+        "type": "payment-provider",
+        "address": "8527436117.etb@icici",
+        "description": "Instant UPI transfers to this ID."
+      },
+      {
+        "guid": "email-donations",
+        "type": "payment-provider",
+        "address": "business.moyeen@gmail.com",
+        "description": "Send one-time or recurring contributions directly via email-based payment link."
+      }
+    ],
+    "plans": [
+      {
+        "guid": "hosting-monthly",
+        "status": "active",
+        "name": "Server & API Costs",
+        "description": "Covers Firebase hosting, Hugging Face API calls, and Wikipedia REST usage.",
+        "amount": 500,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": ["upi", "email-donations"]
+      },
+      {
+        "guid": "developer-time",
+        "status": "active",
+        "name": "Developer Compensation",
+        "description": "Funds full-time maintenance, bug fixes, and new feature development.",
+        "amount": 1500,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": ["bank-transfer"]
+      },
+      {
+        "guid": "feature-bounty",
+        "status": "active",
+        "name": "Feature Bounties",
+        "description": "One-time pool for high-priority feature requests or integrations.",
+        "amount": 2000,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": ["bank-transfer", "upi", "email-donations"]
+      }
+    ],
+    "history": []
+  }
+}
