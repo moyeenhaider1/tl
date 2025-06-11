@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CLIENT_ID</key>
+	<string>491294838741-q9prsm9fllvv86jck6dasffcq2f55n2k.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.491294838741-q9prsm9fllvv86jck6dasffcq2f55n2k</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>491294838741-81kvue69it76rnn2t4q1ps1qanbglult.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyA8lp9CorQlqOD7ez3kR7TeEtPyFkAFGCw</string>
 	<key>GCM_SENDER_ID</key>
@@ -9,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.travelLens</string>
+	<string>io.flutter.flutter.app</string>
 	<key>PROJECT_ID</key>
 	<string>travellensapp-94d3f</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:491294838741:ios:b2476a09bdc4517f87b75c</string>
+	<string>1:491294838741:ios:336e4bebb64e3ae887b75c</string>
 </dict>
 </plist>

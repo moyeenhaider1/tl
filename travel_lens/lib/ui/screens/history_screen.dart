@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:travel_lens/data/models/detection_result.dart';
+import 'package:travel_lens/data/providers/auth_provider.dart';
 import 'package:travel_lens/data/providers/history_provider.dart';
+import 'package:travel_lens/ui/screens/auth/login_screen.dart';
 import 'package:travel_lens/ui/screens/result_details_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -20,16 +22,66 @@ class _HistoryScreenState extends State<HistoryScreen> {
     super.initState();
     // Fetch history when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Replace with actual user ID
-      const userId = 'sample_user_id';
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final historyProvider =
           Provider.of<HistoryProvider>(context, listen: false);
-      historyProvider.fetchHistory(userId);
+      historyProvider.fetchUserHistory(authProvider);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    // Check if user is logged in
+    if (!authProvider.isAuthenticated) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('History'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.login,
+                  size: 64,
+                  color: Colors.blue,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Sign In Required',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Please sign in to view your detection history',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const LoginScreen()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(200, 50),
+                  ),
+                  child: const Text('Sign In'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('History'),

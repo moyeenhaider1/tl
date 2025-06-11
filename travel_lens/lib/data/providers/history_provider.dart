@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:travel_lens/data/models/detection_result.dart';
+import 'package:travel_lens/data/providers/auth_provider.dart';
 
 class HistoryProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -38,16 +39,26 @@ class HistoryProvider extends ChangeNotifier {
   }
 
   // Save detection result
-  Future<void> saveResult(DetectionResult result) async {
+  Future<void> saveResult(
+      DetectionResult result, AuthProvider authProvider) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      // Save to Firestore
-      await _firestore.collection('history').doc(result.id).set(result.toMap());
+      // Only save if user is authenticated
+      if (authProvider.isAuthenticated && authProvider.user != null) {
+        final resultWithUserId =
+            result.copyWith(userId: authProvider.user!.uid);
 
-      // Update local list
-      _historyItems = [result, ..._historyItems];
+        // Save to Firestore
+        await _firestore
+            .collection('history')
+            .doc(resultWithUserId.id)
+            .set(resultWithUserId.toMap());
+
+        // Update local list
+        _historyItems = [resultWithUserId, ..._historyItems];
+      }
     } catch (e) {
       _error = 'Error saving result: $e';
     } finally {
@@ -100,4 +111,17 @@ class HistoryProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+
+  // Add this method to connect user ID with history items
+  Future<void> fetchUserHistory(AuthProvider authProvider) async {
+    if (!authProvider.isAuthenticated || authProvider.user == null) {
+      _error = 'User not authenticated';
+      notifyListeners();
+      return;
+    }
+
+    await fetchHistory(authProvider.user!.uid);
+  }
+
+// Also update the saveResult method to include the current user's ID
 }

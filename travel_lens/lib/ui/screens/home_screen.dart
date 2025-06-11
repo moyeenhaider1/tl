@@ -1,22 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:travel_lens/data/providers/auth_provider.dart';
 import 'package:travel_lens/data/providers/detection_provider.dart';
 import 'package:travel_lens/ui/screens/camera_screen.dart';
+import 'package:travel_lens/ui/widgets/auth_status_widget.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final userDisplayName = authProvider.user?.displayName ??
+        authProvider.user?.email?.split('@').first ??
+        'Traveler';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('TravelLens'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              // Navigate to settings
-            },
+          // Add user greeting in the app bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Center(
+              child: Text(
+                'Hi, $userDisplayName',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ),
           ),
         ],
       ),
@@ -43,48 +54,48 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildWelcomeView(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.travel_explore,
-            size: 100,
-            color: Colors.blue,
+    return SingleChildScrollView(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Auth status widget at the top
+              const AuthStatusWidget(),
+              const SizedBox(height: 24),
+
+              const Icon(
+                Icons.travel_explore,
+                size: 100,
+                color: Colors.blue,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Welcome to TravelLens',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                child: Text(
+                  'Point your camera at landmarks, signs, or menus to get instant information in your language.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ),
+              // Removed the duplicate "Start Exploring" button
+              // Added extra space at bottom for FAB
+              const SizedBox(height: 80),
+            ],
           ),
-          const SizedBox(height: 24),
-          Text(
-            'Welcome to TravelLens',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Text(
-              'Point your camera at landmarks, signs, or menus to get instant information in your language.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ),
-          const SizedBox(height: 48),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const CameraScreen()),
-              );
-            },
-            icon: const Icon(Icons.camera_alt),
-            label: const Text('Start Exploring'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildResultsView(BuildContext context, DetectionProvider provider) {
+    // Existing results view code...
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
@@ -132,6 +143,7 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildInfoCard(
       BuildContext context, String title, String content, IconData icon) {
+    // Existing info card code...
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(

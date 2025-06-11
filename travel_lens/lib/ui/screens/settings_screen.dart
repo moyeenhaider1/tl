@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:travel_lens/data/providers/auth_provider.dart';
 import 'package:travel_lens/data/providers/language_provider.dart';
+import 'package:travel_lens/ui/screens/auth/login_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -52,29 +53,19 @@ class SettingsScreen extends StatelessWidget {
             title:
                 Text('Account', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
-          ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: const Text('Profile'),
-            subtitle: Text(authProvider.userEmail ?? 'Not signed in'),
-            onTap: () {
-              // Navigate to profile screen
-            },
-          ),
+
+          // Authentication section - changes based on login state
+          if (authProvider.isAuthenticated)
+            _buildAuthenticatedAccountSection(context, authProvider)
+          else
+            _buildUnauthenticatedAccountSection(context),
 
           const Divider(height: 32),
 
-          // App Settings
+          // App Settings (available to all users)
           const ListTile(
             title: Text('App Settings',
                 style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          SwitchListTile(
-            title: const Text('Save History'),
-            subtitle: const Text('Store detection results in your account'),
-            value: true, // Replace with actual setting
-            onChanged: (value) {
-              // Update setting
-            },
           ),
           SwitchListTile(
             title: const Text('Auto Text-to-Speech'),
@@ -100,7 +91,7 @@ class SettingsScreen extends StatelessWidget {
                 applicationName: 'TravelLens',
                 applicationVersion: '1.0.0',
                 applicationIcon: const FlutterLogo(),
-                applicationLegalese: '© 2025 Your Name',
+                applicationLegalese: '© 2025 TravelLens',
                 children: const [
                   SizedBox(height: 16),
                   Text('Your AI-Powered Visual Travel Companion'),
@@ -108,23 +99,108 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
-
-          // Sign Out Button
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: () async {
-                await authProvider.signOut();
-                // Navigate to login screen after sign out
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              child: const Text('Sign Out'),
-            ),
-          ),
         ],
       ),
+    );
+  }
+
+  // Widget for authenticated users
+  Widget _buildAuthenticatedAccountSection(
+      BuildContext context, AuthProvider authProvider) {
+    return Column(
+      children: [
+        ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            child: const Icon(Icons.person, color: Colors.white),
+          ),
+          title: Text(
+            authProvider.user?.displayName ??
+                authProvider.user?.email?.split('@').first ??
+                'User',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(authProvider.user?.email ?? ''),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: ElevatedButton(
+            onPressed: () async {
+              final shouldSignOut = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Sign Out'),
+                      content: const Text('Are you sure you want to sign out?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Sign Out'),
+                        ),
+                      ],
+                    ),
+                  ) ??
+                  false;
+
+              if (shouldSignOut) {
+                await authProvider.signOut();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              minimumSize: const Size(double.infinity, 48),
+            ),
+            child: const Text('Sign Out'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Widget for non-authenticated users
+  Widget _buildUnauthenticatedAccountSection(BuildContext context) {
+    return Column(
+      children: [
+        const ListTile(
+          leading: Icon(Icons.account_circle_outlined),
+          title: Text('Not signed in'),
+          subtitle: Text('Sign in to access your history and saved items'),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()));
+            },
+            icon: const Icon(Icons.login),
+            label: const Text('Sign In'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: TextButton(
+            onPressed: () {
+              // You could directly navigate to register screen if you prefer
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()));
+            },
+            style: TextButton.styleFrom(
+              minimumSize: const Size(double.infinity, 40),
+            ),
+            child: const Text('Create a new account'),
+          ),
+        ),
+      ],
     );
   }
 }

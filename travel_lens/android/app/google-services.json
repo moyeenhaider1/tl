@@ -12,7 +12,20 @@
           "package_name": "com.example.travel_lens"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "491294838741-81kvue69it76rnn2t4q1ps1qanbglult.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.travel_lens",
+            "certificate_hash": "a29001452c1c45a5dada98a8089eadda713a926e"
+          }
+        },
+        {
+          "client_id": "491294838741-hrum773r6ip8qjm7u8f4rm249mamdhoq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC0q_YqC5ZsTlfmVpZkaERHI6mzETslj2M"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "491294838741-hrum773r6ip8qjm7u8f4rm249mamdhoq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "491294838741-q9prsm9fllvv86jck6dasffcq2f55n2k.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "io.flutter.flutter.app"
+              }
+            }
+          ]
         }
       }
     }

@@ -66,6 +66,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const HistoryScreen(),
     const SettingsScreen(),
   ];
+  // Add this method to allow external tab selection
+  void selectTab(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

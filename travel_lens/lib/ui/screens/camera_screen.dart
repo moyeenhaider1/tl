@@ -3,7 +3,11 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:travel_lens/data/models/detection_result.dart';
+import 'package:travel_lens/data/providers/auth_provider.dart';
 import 'package:travel_lens/data/providers/detection_provider.dart';
+import 'package:travel_lens/data/providers/history_provider.dart';
+import 'package:travel_lens/ui/screens/auth/login_screen.dart';
 import 'package:travel_lens/ui/widgets/processing_overlay.dart';
 
 class CameraScreen extends StatefulWidget {
@@ -72,6 +76,8 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
+  // In the _takePicture method, add authentication check:
+
   Future<void> _takePicture() async {
     if (!_isCameraInitialized || _isCapturing) return;
 
@@ -86,9 +92,65 @@ class _CameraScreenState extends State<CameraScreen>
 
       final detectionProvider =
           Provider.of<DetectionProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
       await detectionProvider.processImage(File(image.path));
 
-      Navigator.of(context).pop();
+      // Check if user is authenticated
+      if (!authProvider.isAuthenticated) {
+        // If not authenticated, show a dialog after processing
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Sign in to Save'),
+              content: const Text(
+                'This result will not be saved to your history. Sign in to save your discoveries.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const LoginScreen()),
+                    );
+                  },
+                  child: const Text('Sign In'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                  },
+                  child: const Text('Continue as Guest'),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        // User is authenticated, save to history
+        final historyProvider =
+            Provider.of<HistoryProvider>(context, listen: false);
+
+        final result = DetectionResult.create(
+          userId: authProvider.user?.uid,
+          image: File(image.path),
+        ).copyWith(
+          detectedObject: detectionProvider.detectedObject,
+          extractedText: detectionProvider.extractedText,
+          translatedText: detectionProvider.translatedText,
+          summary: detectionProvider.summary,
+        );
+
+        await historyProvider.saveResult(result, authProvider);
+      }
+
+      // Always navigate back to results screen, whether logged in or not
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     } catch (e) {
       debugPrint('Error taking picture: $e');
     } finally {
@@ -103,9 +165,9 @@ class _CameraScreenState extends State<CameraScreen>
   @override
   Widget build(BuildContext context) {
     if (!_isCameraInitialized) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: Colors.black,
-        body: const Center(
+        body: Center(
           child: CircularProgressIndicator(),
         ),
       );

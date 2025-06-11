@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:travel_lens/main.dart'; // Updated import
+import 'package:travel_lens/main.dart';
 import 'package:travel_lens/ui/theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -14,15 +14,17 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToHome();
+    _navigateToNextScreen();
   }
 
-  Future<void> _navigateToHome() async {
+  Future<void> _navigateToNextScreen() async {
     // Simulate loading resources
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
+    // Always navigate to MainNavigationScreen - authentication status
+    // will be handled within individual screens
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
     );
