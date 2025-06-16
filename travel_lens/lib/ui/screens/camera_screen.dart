@@ -94,7 +94,7 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   Future<void> _takePicture() async {
-    if (!_isCameraInitialized || _isCapturing) return;
+    if (!_isCameraInitialized || _isCapturing || !mounted) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -129,6 +129,8 @@ class _CameraScreenState extends State<CameraScreen>
 
   // New method for picking image from gallery
   Future<void> _pickImageFromGallery() async {
+    if (!mounted) return;
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     try {
@@ -160,6 +162,8 @@ class _CameraScreenState extends State<CameraScreen>
 
   // Common method to process images from both camera and gallery
   Future<void> _processImage(File imageFile, AuthProvider authProvider) async {
+    if (!mounted) return;
+
     setState(() {
       _isCapturing = true;
     });
@@ -181,13 +185,20 @@ class _CameraScreenState extends State<CameraScreen>
         longitude = position.longitude;
         placeName =
             await _locationService.getPlaceFromCoordinates(latitude, longitude);
+
+        debugPrint('Location detected: $placeName ($latitude, $longitude)');
       } catch (e) {
         debugPrint('Could not get location: $e');
         // Continue without location
       }
 
-      // Save to history if authenticated
+      // Save to history if authenticated - check mounted again after async work
+      if (!mounted) return;
+
       if (authProvider.isAuthenticated) {
+        // Guard against widget unmounting during the process
+        if (!mounted) return;
+
         final historyProvider =
             Provider.of<HistoryProvider>(context, listen: false);
 
@@ -201,7 +212,17 @@ class _CameraScreenState extends State<CameraScreen>
           summary: detectionProvider.summary,
         );
 
-        await historyProvider.saveResult(result, authProvider);
+        // Handle any errors during saving without crashing
+        try {
+          await historyProvider.saveResult(result, authProvider);
+        } catch (e) {
+          debugPrint('Error saving result to history: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to save to history: $e')),
+            );
+          }
+        }
       } else {
         // Show login prompt for guest users
         if (mounted) {
@@ -236,9 +257,15 @@ class _CameraScreenState extends State<CameraScreen>
         }
       }
 
-      // Navigate back
+      // Use a slight delay before navigating back to ensure all async operations are truly complete
+      // This helps avoid any race conditions with widget state
       if (mounted) {
-        Navigator.of(context).pop();
+        // Small delay to ensure all processing is truly complete
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (mounted) {
+          // Check mounted again after the delay
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       debugPrint('Error processing image: $e');

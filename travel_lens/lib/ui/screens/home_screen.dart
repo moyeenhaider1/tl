@@ -161,30 +161,30 @@ class HomeScreen extends StatelessWidget {
         ],
 
         // Actions row
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => provider.resetResults(),
-                icon: const Icon(Icons.refresh),
-                label: const Text('New Scan'),
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Theme.of(context).colorScheme.secondary,
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  // TODO: Implement share functionality
-                },
-                icon: const Icon(Icons.share),
-                label: const Text('Share'),
-              ),
-            ],
-          ),
-        ),
+        // Padding(
+        //   padding: const EdgeInsets.symmetric(vertical: 24.0),
+        //   child: Row(
+        //     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        //     children: [
+        //       ElevatedButton.icon(
+        //         onPressed: () => provider.resetResults(),
+        //         icon: const Icon(Icons.refresh),
+        //         label: const Text('New Scan'),
+        //         style: ElevatedButton.styleFrom(
+        //           foregroundColor: Colors.white,
+        //           backgroundColor: Theme.of(context).colorScheme.secondary,
+        //         ),
+        //       ),
+        //       ElevatedButton.icon(
+        //         onPressed: () {
+        //           // TODO: Implement share functionality
+        //         },
+        //         icon: const Icon(Icons.share),
+        //         label: const Text('Share'),
+        //       ),
+        //     ],
+        //   ),
+        // ),
 
         // Add some space at the bottom for the FAB
         const SizedBox(height: 80),

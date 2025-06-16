@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:camera/camera.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/widgets.dart';
 import 'package:travel_lens/core/errors/app_exception.dart';
@@ -102,7 +103,8 @@ class HistoryProvider extends ChangeNotifier {
       final file = File(result.imagePath);
       if (await file.exists()) {
         debugPrint('Uploading image with ${_storageService.providerName}...');
-        imageUrl = await _storageService.uploadImage(file, userId);
+        final XFile xFile = XFile(file.path);
+        imageUrl = await _storageService.uploadImage(xFile, userId);
         debugPrint('Image uploaded successfully: $imageUrl');
       } else {
         debugPrint(

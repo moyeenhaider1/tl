@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:travel_lens/core/interfaces/storage_interface.dart';
@@ -79,7 +78,7 @@ class StorageService {
   }
 
   /// Upload an image and return the public URL
-  Future<String> uploadImage(File imageFile, String userId) async {
+  Future<String> uploadImage(XFile imageFile, String userId) async {
     try {
       debugPrint(
           'Uploading image for user: $userId (current: moyeenhaider1) at 2025-06-15 07:00:23 UTC');

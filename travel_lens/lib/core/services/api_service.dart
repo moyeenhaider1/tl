@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:travel_lens/core/errors/app_exception.dart';
 import 'package:travel_lens/core/services/api_config.dart';
@@ -24,7 +25,11 @@ class ApiService {
       try {
         attempts++;
 
-        final url = '${ApiConfig.huggingFaceBaseUrl}/$modelEndpoint';
+        // Ensure properly formatted URL for Hugging Face Inference API
+        // The correct format is: https://api-inference.huggingface.co/models/MODEL_ID
+        final url = '${ApiConfig.huggingFaceBaseUrl}/models/$modelEndpoint';
+
+        debugPrint('Sending request to HuggingFace: $url');
 
         // Read image file as bytes
         final bytes = await imageFile.readAsBytes();
@@ -32,20 +37,38 @@ class ApiService {
         // Determine content type based on file extension
         final contentType = _getContentTypeFromFile(imageFile);
 
-        // Prepare headers
+        // Prepare headers - ensure API key is properly formatted
+        final apiKey = ApiConfig.huggingFaceApiKey.trim();
         final headers = {
-          'Authorization': 'Bearer ${ApiConfig.huggingFaceApiKey}',
+          'Authorization': 'Bearer $apiKey',
           'Content-Type': contentType,
         };
 
-        // Send request
+        // Log API request details (without exposing full API key)
+        debugPrint('HuggingFace API request:');
+        debugPrint('- URL: $url');
+        debugPrint('- ContentType: $contentType');
+        debugPrint('- ImageSize: ${bytes.length} bytes');
+        debugPrint(
+            '- API Key prefix: ${apiKey.substring(0, min(5, apiKey.length))}...');
+
+        // Send request with more graceful timeout handling
         final response = await _client
             .post(
-              Uri.parse(url),
-              headers: headers,
-              body: bytes,
-            )
-            .timeout(const Duration(seconds: ApiConfig.defaultTimeout));
+          Uri.parse(url),
+          headers: headers,
+          body: bytes,
+        )
+            .timeout(
+          const Duration(seconds: ApiConfig.defaultTimeout),
+          onTimeout: () {
+            debugPrint(
+                'HuggingFace API request timed out after ${ApiConfig.defaultTimeout} seconds');
+            throw AppException(
+                'API request timed out. Try with a smaller image or try again later.',
+                code: 'timeout');
+          },
+        );
 
         // Check response
         if (response.statusCode == 200) {
@@ -127,7 +150,7 @@ class ApiService {
       try {
         attempts++;
 
-        final url = '${ApiConfig.huggingFaceBaseUrl}/$modelEndpoint';
+        final url = '${ApiConfig.huggingFaceBaseUrl}/models/$modelEndpoint';
 
         // Prepare headers
         final headers = {

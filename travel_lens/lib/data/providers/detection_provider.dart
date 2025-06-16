@@ -86,7 +86,15 @@ class DetectionProvider extends ChangeNotifier {
 
       _status = ProcessingStatus.completed;
       _progressValue = 1.0;
-      notifyListeners();
+
+      // Use notifyListeners only if there are active listeners
+      // This is a safe pattern that avoids errors but doesn't directly depend on 'mounted'
+      // since ChangeNotifier doesn't have access to mounted state
+      try {
+        notifyListeners();
+      } catch (e) {
+        debugPrint('Notification error (listeners may have been disposed): $e');
+      }
     } on AppException catch (e) {
       _handleError(e.message);
     } catch (e) {
@@ -98,7 +106,12 @@ class DetectionProvider extends ChangeNotifier {
     try {
       _status = ProcessingStatus.detecting;
       _progressValue = 0.25;
-      notifyListeners();
+
+      try {
+        notifyListeners();
+      } catch (e) {
+        debugPrint('Notification error (listeners may have been disposed): $e');
+      }
 
       _detectedObjects =
           await _objectDetectionService.detectObjects(_capturedImage!);
@@ -121,12 +134,25 @@ class DetectionProvider extends ChangeNotifier {
     try {
       _status = ProcessingStatus.extracting;
       _progressValue = 0.5;
-      notifyListeners();
 
-      final extractedText = await _ocrService.extractText(_capturedImage!);
-      _extractedText = extractedText.trim().isNotEmpty ? extractedText : null;
+      try {
+        notifyListeners();
+      } catch (e) {
+        debugPrint('Notification error (listeners may have been disposed): $e');
+      }
+
+      try {
+        final extractedText = await _ocrService.extractText(_capturedImage!);
+        _extractedText = extractedText.trim().isNotEmpty ? extractedText : null;
+      } catch (e) {
+        // Don't fail completely if OCR fails, just log it and continue
+        debugPrint('OCR failed but continuing processing: $e');
+        _extractedText = null;
+      }
     } catch (e) {
-      throw AppException('Failed to extract text: $e');
+      debugPrint('Extract text error handled: $e');
+      // Set to null rather than failing completely
+      _extractedText = null;
     }
   }
 
@@ -134,7 +160,12 @@ class DetectionProvider extends ChangeNotifier {
     try {
       _status = ProcessingStatus.translating;
       _progressValue = 0.75;
-      notifyListeners();
+
+      try {
+        notifyListeners();
+      } catch (e) {
+        debugPrint('Notification error (listeners may have been disposed): $e');
+      }
 
       // Auto-detect source language or use a default
       const sourceLanguage = 'auto';
@@ -155,7 +186,12 @@ class DetectionProvider extends ChangeNotifier {
     try {
       _status = ProcessingStatus.summarizing;
       _progressValue = 0.9;
-      notifyListeners();
+
+      try {
+        notifyListeners();
+      } catch (e) {
+        debugPrint('Notification error (listeners may have been disposed): $e');
+      }
 
       _summary = await _wikipediaService.getInformation(_detectedObject!);
     } catch (e) {
@@ -168,7 +204,12 @@ class DetectionProvider extends ChangeNotifier {
   void _handleError(String message) {
     _status = ProcessingStatus.error;
     _errorMessage = message;
-    notifyListeners();
+
+    try {
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Notification error (listeners may have been disposed): $e');
+    }
   }
 
   void _reset() {
@@ -185,7 +226,12 @@ class DetectionProvider extends ChangeNotifier {
   void resetResults() {
     _reset();
     _capturedImage = null;
-    notifyListeners();
+
+    try {
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Notification error (listeners may have been disposed): $e');
+    }
   }
 
   void retryProcessing({String targetLanguage = 'en'}) {

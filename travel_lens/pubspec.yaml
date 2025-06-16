@@ -88,6 +88,7 @@ dependencies:
   image: ^4.0.17
   # Sharing functionality
   share_plus: ^7.1.0
+  flutter_image_compress: ^2.3.0
 
 dev_dependencies:
   # === TESTING & DEVELOPMENT ===

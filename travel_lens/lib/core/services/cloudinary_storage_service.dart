@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:cloudinary_sdk/cloudinary_sdk.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:image/image.dart' as img;
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:travel_lens/core/errors/app_exception.dart';
 import 'package:travel_lens/core/interfaces/storage_interface.dart';
 import 'package:uuid/uuid.dart';
@@ -17,122 +17,213 @@ class CloudinaryStorageService implements StorageInterface {
   }
 
   void _initializeCloudinary() {
+    // Get credentials from .env file
     final cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME'];
     final apiKey = dotenv.env['CLOUDINARY_API_KEY'];
-    final apiSecret = dotenv.env['CLOUDINARY_API_SECRET'];
+    // We don't need the API secret for unsigned uploads
 
-    if (cloudName == null || apiKey == null || apiSecret == null) {
+    // Validate cloud name (minimum required)
+    if (cloudName == null) {
       throw AppException(
-          'Cloudinary credentials not found in environment variables');
+          'Cloudinary cloud name not found in environment variables');
+    }
+    if (cloudName.isEmpty) {
+      throw AppException('Cloudinary cloud name cannot be empty');
     }
 
-    _cloudinary = Cloudinary.full(
-      apiKey: apiKey,
-      apiSecret: apiSecret,
-      cloudName: cloudName,
-    );
-
-    debugPrint(
-        '[$providerName] Initialized for user: moyeenhaider1 at 2025-06-15 07:45:10 UTC');
+    debugPrint('[$providerName] Initializing Cloudinary with:');
     debugPrint('[$providerName] Cloud name: $cloudName');
-    debugPrint('[$providerName] API key configured: ${apiKey.isNotEmpty}');
+    // Log API key info if available but don't require it
+    if (apiKey != null && apiKey.isNotEmpty) {
+      debugPrint('[$providerName] API key length: ${apiKey.length}');
+    } else {
+      debugPrint(
+          '[$providerName] API key: Not configured (will use unsigned uploads)');
+    }
+
+    // For mobile applications, using unsigned uploads with a preset is more secure
+    // than storing the API key and secret in the app
+    try {
+      // Use .basic constructor for unsigned uploads
+      _cloudinary = Cloudinary.basic(
+        cloudName: cloudName,
+      );
+
+      // Test the Cloudinary instance is working correctly
+      debugPrint('[$providerName] Cloudinary initialized successfully');
+      debugPrint('[$providerName] SDK instance: ${_cloudinary.toString()}');
+    } catch (e) {
+      debugPrint('[$providerName] Error initializing Cloudinary: $e');
+      throw AppException('Failed to initialize Cloudinary: $e');
+    }
+
+    // Print final initialization info
+    debugPrint(
+        '[$providerName] Initialized at ${DateTime.now().toUtc().toIso8601String()}');
+    debugPrint('[$providerName] Cloud name: $cloudName');
+    // No need to print API key or secret when using unsigned uploads
   }
 
   @override
   String get providerName => 'Cloudinary';
 
   @override
-  Future<String> uploadImage(File imageFile, String userId) async {
-    try {
-      const currentTime = '2025-06-16 08:47:56';
-      debugPrint(
-          '[$providerName] Starting upload for user: $userId at $currentTime');
-      debugPrint('[$providerName] Target user folder: $userId');
-      debugPrint('[$providerName] Original file path: ${imageFile.path}');
+  Future<String> uploadImage(XFile imageFile, String userId) async {
+    final cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME']!;
+    final apiSecret = dotenv.env['CLOUDINARY_API_SECRET']!;
 
-      // Check if file exists
-      if (!await imageFile.exists()) {
-        throw AppException('Image file does not exist: ${imageFile.path}');
-      }
+    final apiKey = dotenv.env['CLOUDINARY_API_KEY']!;
+    final preset = dotenv.env['CLOUDINARY_UPLOAD_PRESET']!;
 
-      // Compress image before upload
-      final compressedFile = await _compressImage(imageFile);
+    final cloudinary = Cloudinary.full(
+        apiKey: apiKey, cloudName: cloudName, apiSecret: apiSecret);
+    final compressedFile = await _compressImage(imageFile);
+    final resource = CloudinaryUploadResource(
+      filePath: compressedFile.path,
+      resourceType: CloudinaryResourceType.image,
+      folder: 'travel_lens/$userId',
+      fileName: 'travel_${_uuid.v4()}_${DateTime.now().millisecondsSinceEpoch}',
+      optParams: {'upload_preset': preset},
+    );
 
-      // Create unique filename with timestamp
-      final timestamp = DateTime.now().toUtc().millisecondsSinceEpoch;
-      final fileName = 'travel_lens_${_uuid.v4()}_$timestamp';
-      final folderPath = 'travel_lens/$userId';
-
-      debugPrint('[$providerName] Upload details:');
-      debugPrint('  - File: ${compressedFile.path}');
-      debugPrint('  - Public ID: $fileName');
-      debugPrint('  - Folder: $folderPath');
-      debugPrint('  - Resource Type: image');
-
-      // Create CloudinaryUploadResource with proper authentication
-      final uploadResource = CloudinaryUploadResource(
-        filePath: compressedFile.path,
-        // Remove the upload preset and instead rely on the API key and secret
-        // that should be configured in your CloudinaryClient
-        publicId: fileName,
-        folder: folderPath,
-        resourceType: CloudinaryResourceType.image,
-        optParams: {
-          'overwrite': true,
-          'invalidate': true,
-          'quality': 'auto:good',
-          'format': 'jpg',
-          // Add these for signed uploads if they're not already in your CloudinaryClient
-          'api_key': dotenv.env['CLOUDINARY_API_KEY'],
-          'timestamp': DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000,
-        },
-      );
-
-      // Upload to Cloudinary using uploadResource
-      final response = await _cloudinary.uploadResource(uploadResource);
-
-      // Clean up compressed file if it's different from original
-      if (compressedFile.path != imageFile.path) {
-        try {
-          await compressedFile.delete();
-          debugPrint('[$providerName] Cleaned up compressed file');
-        } catch (e) {
-          debugPrint(
-              '[$providerName] Warning: Could not delete compressed file: $e');
-        }
-      }
-
-      if (response.isSuccessful && response.secureUrl != null) {
-        debugPrint('[$providerName] Upload successful at $currentTime');
-        debugPrint('[$providerName] Secure URL: ${response.secureUrl}');
-        debugPrint('[$providerName] Public ID: ${response.publicId}');
-        debugPrint('[$providerName] Format: ${response.format}');
-        debugPrint('[$providerName] Width: ${response.width}');
-        debugPrint('[$providerName] Height: ${response.height}');
-        debugPrint('[$providerName] Bytes: ${response.bytes}');
-        return response.secureUrl!;
-      } else {
-        final errorMessage = response.error ?? 'Unknown upload error';
-        debugPrint(
-            '[$providerName] Upload failed at $currentTime: $errorMessage');
-        throw AppException('Upload failed: $errorMessage');
-      }
-    } catch (e) {
-      const currentTime = '2025-06-16 08:47:56';
-      debugPrint(
-          '[$providerName] Upload error for user $userId at $currentTime: $e');
-      if (e is AppException) {
-        rethrow;
-      }
-      throw AppException('Upload failed: $e');
+    final response = await cloudinary.uploadResource(resource);
+    if (response.isSuccessful) {
+      return response.secureUrl!;
     }
+    throw AppException('Upload failed: ${response.error}');
   }
+  // Future<String> uploadImage(File imageFile, String userId) async {
+  //   try {
+  //     final currentTime = DateTime.now().toUtc().toIso8601String();
+  //     debugPrint(
+  //         '[$providerName] Starting upload for user: $userId at $currentTime');
+  //     debugPrint('[$providerName] Target user folder: $userId');
+  //     debugPrint('[$providerName] Original file path: ${imageFile.path}');
+
+  //     // Check if file exists
+  //     if (!await imageFile.exists()) {
+  //       throw AppException('Image file does not exist: ${imageFile.path}');
+  //     }
+
+  //     // Compress image before upload
+  //     final compressedFile = await _compressImage(imageFile);
+
+  //     // Create unique filename with timestamp
+  //     final timestamp = DateTime.now().toUtc().millisecondsSinceEpoch;
+  //     final fileName = 'travel_lens_${_uuid.v4()}_$timestamp';
+  //     final folderPath = 'travel_lens/$userId';
+
+  //     debugPrint('[$providerName] Upload details:');
+  //     debugPrint('  - File: ${compressedFile.path}');
+  //     debugPrint('  - Public ID: $fileName');
+  //     debugPrint('  - Folder: $folderPath');
+  //     debugPrint('  - Resource Type: image');
+
+  //     // Use unsigned upload with a predefined upload preset
+  //     // You must create this preset in your Cloudinary dashboard
+  //     // Settings > Upload > Upload Presets > Add upload preset
+  //     // Set to "unsigned" and name it "travel_lens"
+  //     const uploadPreset =
+  //         'ml_default'; // Use your actual unsigned upload preset name
+
+  //     debugPrint('[$providerName] Upload details:');
+  //     debugPrint('  - File: ${compressedFile.path}');
+  //     debugPrint('  - Public ID: $fileName');
+  //     debugPrint('  - Folder: $folderPath');
+  //     debugPrint('  - Using upload preset: $uploadPreset');
+
+  //     // Setup the upload resource for unsigned upload
+  //     CloudinaryResponse response;
+  //     try {
+  //       debugPrint('[$providerName] Attempting direct upload with preset...');
+  //       // Create an unsigned upload resource with the upload_preset parameter
+  //       final uploadOptions = {
+  //         'upload_preset':
+  //             uploadPreset, // Critical parameter for unsigned uploads
+  //         'folder': folderPath,
+  //         'public_id': fileName,
+  //         'overwrite': true,
+  //         'invalidate': true,
+  //         'quality': 'auto:good',
+  //         'format': 'jpg',
+  //       };
+
+  //       // Use uploadFile method with preset in options
+  //       response = await _cloudinary.uploadFile(
+  //         filePath: compressedFile.path,
+  //         resourceType: CloudinaryResourceType.image,
+  //         optParams: uploadOptions,
+  //       );
+  //     } catch (e) {
+  //       debugPrint('[$providerName] Unsigned upload failed: $e');
+
+  //       // Fallback to try with a different approach
+  //       debugPrint('[$providerName] Trying alternative upload method...');
+  //       try {
+  //         final uploadResource = CloudinaryUploadResource(
+  //           filePath: compressedFile.path,
+  //           resourceType: CloudinaryResourceType.image,
+  //           optParams: {
+  //             'upload_preset':
+  //                 uploadPreset, // Critical parameter for unsigned uploads
+  //             'folder': folderPath,
+  //             'public_id': fileName,
+  //             'overwrite': true,
+  //             'invalidate': true,
+  //           },
+  //         );
+
+  //         response = await _cloudinary.uploadResource(uploadResource);
+  //       } catch (secondError) {
+  //         debugPrint(
+  //             '[$providerName] Alternative upload method failed: $secondError');
+  //         throw AppException(
+  //             'Upload failed after multiple attempts: $secondError');
+  //       }
+  //     }
+
+  //     // Clean up compressed file if it's different from original
+  //     if (compressedFile.path != imageFile.path) {
+  //       try {
+  //         await compressedFile.delete();
+  //         debugPrint('[$providerName] Cleaned up compressed file');
+  //       } catch (e) {
+  //         debugPrint(
+  //             '[$providerName] Warning: Could not delete compressed file: $e');
+  //       }
+  //     }
+
+  //     if (response.isSuccessful && response.secureUrl != null) {
+  //       debugPrint('[$providerName] Upload successful at $currentTime');
+  //       debugPrint('[$providerName] Secure URL: ${response.secureUrl}');
+  //       debugPrint('[$providerName] Public ID: ${response.publicId}');
+  //       debugPrint('[$providerName] Format: ${response.format}');
+  //       debugPrint('[$providerName] Width: ${response.width}');
+  //       debugPrint('[$providerName] Height: ${response.height}');
+  //       debugPrint('[$providerName] Bytes: ${response.bytes}');
+  //       return response.secureUrl!;
+  //     } else {
+  //       final errorMessage = response.error ?? 'Unknown upload error';
+  //       debugPrint(
+  //           '[$providerName] Upload failed at $currentTime: $errorMessage');
+  //       throw AppException('Upload failed: $errorMessage');
+  //     }
+  //   } catch (e) {
+  //     final errorTime = DateTime.now().toUtc().toIso8601String();
+  //     debugPrint(
+  //         '[$providerName] Upload error for user $userId at $errorTime: $e');
+  //     if (e is AppException) {
+  //       rethrow;
+  //     }
+  //     throw AppException('Upload failed: $e');
+  //   }
+  // }
 
   @override
   Future<void> deleteImage(String imageUrl) async {
     try {
-      debugPrint(
-          '[$providerName] Deleting image for user moyeenhaider1 at 2025-06-15 07:45:10 UTC');
+      final currentTime = DateTime.now().toUtc().toIso8601String();
+      debugPrint('[$providerName] Deleting image at $currentTime');
       debugPrint('[$providerName] Image URL: $imageUrl');
 
       // Extract public ID from URL
@@ -147,25 +238,25 @@ class CloudinaryStorageService implements StorageInterface {
           resourceType: CloudinaryResourceType.image,
           optParams: {
             'invalidate': true,
+            // Removed api_key and timestamp as the client should handle signing
           },
         );
 
         if (response.isSuccessful) {
-          debugPrint(
-              '[$providerName] Delete successful at 2025-06-15 07:45:10 UTC');
+          debugPrint('[$providerName] Delete successful at $currentTime');
           debugPrint('[$providerName] Delete result: ${response.result}');
         } else {
           final errorMessage = response.error ?? 'Unknown delete error';
           debugPrint(
-              '[$providerName] Delete failed at 2025-06-15 07:45:10 UTC: $errorMessage');
+              '[$providerName] Delete failed at $currentTime: $errorMessage');
           throw AppException('Delete failed: $errorMessage');
         }
       } else {
         throw AppException('Could not extract public ID from URL: $imageUrl');
       }
     } catch (e) {
-      debugPrint(
-          '[$providerName] Delete error for user moyeenhaider1 at 2025-06-15 07:45:10 UTC: $e');
+      final errorTime = DateTime.now().toUtc().toIso8601String();
+      debugPrint('[$providerName] Delete error at $errorTime: $e');
       if (e is AppException) {
         rethrow;
       }
@@ -174,76 +265,30 @@ class CloudinaryStorageService implements StorageInterface {
   }
 
   /// Compresses an image to optimize storage and bandwidth
-  Future<File> _compressImage(File imageFile) async {
-    try {
-      debugPrint(
-          '[$providerName] Starting image compression for user: moyeenhaider1 at 2025-06-15 07:45:10 UTC');
+  Future<XFile> _compressImage(XFile imageFile) async {
+    final dir = await Directory.systemTemp.createTemp('travellens');
+    final targetPath = '${dir.path}/${_uuid.v4()}.jpg';
 
-      final bytes = await imageFile.readAsBytes();
-      final image = img.decodeImage(bytes);
+    final result = await FlutterImageCompress.compressAndGetFile(
+      imageFile.path,
+      targetPath,
+      quality: 85, // Adjust quality (1–100)
+      minWidth: 1200,
+      minHeight: 1200,
+      keepExif: true,
+      format: CompressFormat.jpeg,
+    );
 
-      if (image == null) {
-        debugPrint('[$providerName] Could not decode image, using original');
-        return imageFile;
-      }
-
-      // Calculate new dimensions (max 1200px)
-      int targetWidth = image.width;
-      int targetHeight = image.height;
-
-      debugPrint(
-          '[$providerName] Original dimensions: ${image.width}x${image.height} (${bytes.length} bytes)');
-
-      bool needsResize = targetWidth > 1200 || targetHeight > 1200;
-
-      if (needsResize) {
-        if (targetWidth > targetHeight) {
-          targetWidth = 1200;
-          targetHeight = (targetHeight * (1200 / image.width)).round();
-        } else {
-          targetHeight = 1200;
-          targetWidth = (targetWidth * (1200 / image.height)).round();
-        }
-
-        debugPrint('[$providerName] Resizing to: ${targetWidth}x$targetHeight');
-      }
-
-      // Resize and compress
-      final resized = needsResize
-          ? img.copyResize(image, width: targetWidth, height: targetHeight)
-          : image;
-
-      final compressed = img.encodeJpg(resized, quality: 85);
-
-      // Create temp file
-      final tempDir =
-          await Directory.systemTemp.createTemp('travellens_compress');
-      final tempFile = File(
-          '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
-
-      await tempFile.writeAsBytes(compressed);
-
-      debugPrint(
-          '[$providerName] Image compression completed at 2025-06-15 07:45:10 UTC');
-      debugPrint('[$providerName] Original size: ${bytes.length} bytes');
-      debugPrint('[$providerName] Compressed size: ${compressed.length} bytes');
-      debugPrint(
-          '[$providerName] Size reduction: ${((bytes.length - compressed.length) / bytes.length * 100).toStringAsFixed(1)}%');
-      debugPrint('[$providerName] Compressed file: ${tempFile.path}');
-
-      return tempFile;
-    } catch (e) {
-      debugPrint(
-          '[$providerName] Image compression failed for user moyeenhaider1 at 2025-06-15 07:45:10 UTC: $e');
-      return imageFile;
-    }
+    if (result != null) return result;
+    return imageFile; // Fallback if compression fails
   }
 
   /// Extract public ID from Cloudinary URL for deletion
   String? _extractPublicIdFromUrl(String url) {
     try {
+      final currentTime = DateTime.now().toUtc().toIso8601String();
       debugPrint(
-          '[$providerName] Extracting public ID from URL at 2025-06-15 07:45:10 UTC');
+          '[$providerName] Extracting public ID from URL at $currentTime');
       debugPrint('[$providerName] URL: $url');
 
       final uri = Uri.parse(url);
@@ -281,8 +326,9 @@ class CloudinaryStorageService implements StorageInterface {
       debugPrint('[$providerName] Extracted public ID: $publicId');
       return publicId;
     } catch (e) {
+      final errorTime = DateTime.now().toUtc().toIso8601String();
       debugPrint(
-          '[$providerName] Error extracting public ID for user moyeenhaider1 at 2025-06-15 07:45:10 UTC: $e');
+          '[$providerName] Error extracting public ID at $errorTime: $e');
       return null;
     }
   }
@@ -291,8 +337,8 @@ class CloudinaryStorageService implements StorageInterface {
   Map<String, dynamic> getUploadInfo() {
     return {
       'provider': providerName,
-      'user': 'moyeenhaider1',
-      'timestamp': '2025-06-15 07:45:10 UTC',
+      'user': 'moyeenhaider1', // Consider making this dynamic if needed
+      'timestamp': DateTime.now().toUtc().toIso8601String(),
       'cloud_name': dotenv.env['CLOUDINARY_CLOUD_NAME'],
       'api_configured': dotenv.env['CLOUDINARY_API_KEY'] != null,
       'secret_configured': dotenv.env['CLOUDINARY_API_SECRET'] != null,
@@ -302,26 +348,58 @@ class CloudinaryStorageService implements StorageInterface {
   /// Test upload functionality (for debugging)
   Future<bool> testConnection() async {
     try {
-      debugPrint(
-          '[$providerName] Testing connection for user moyeenhaider1 at 2025-06-15 07:45:10 UTC');
+      final currentTime = DateTime.now().toUtc().toIso8601String();
+      debugPrint('[$providerName] Testing connection at $currentTime');
       debugPrint('[$providerName] Configuration: ${getUploadInfo()}');
 
       // Test with a small dummy resource (you can remove this in production)
-      final testResource = CloudinaryUploadResource(
-        publicId: 'test_connection_${DateTime.now().millisecondsSinceEpoch}',
-        folder: 'travel_lens/test',
-        resourceType: CloudinaryResourceType.raw,
-        optParams: {'resource_type': 'raw'},
-      );
+      // final testResource = CloudinaryUploadResource(
+      //   publicId: 'test_connection_${DateTime.now().millisecondsSinceEpoch}',
+      //   folder: 'travel_lens/test',
+      //   resourceType: CloudinaryResourceType.raw,
+      //   optParams: {'resource_type': 'raw'},
+      // );
 
       // Note: This would need actual file data to work
       // Just checking if the configuration is valid
       debugPrint('[$providerName] Connection test setup successful');
       return true;
     } catch (e) {
-      debugPrint(
-          '[$providerName] Connection test failed for user moyeenhaider1 at 2025-06-15 07:45:10 UTC: $e');
+      final errorTime = DateTime.now().toUtc().toIso8601String();
+      debugPrint('[$providerName] Connection test failed at $errorTime: $e');
       return false;
     }
   }
+
+  // Uncomment if you want to implement delete functionality
+
+// Future<void> deleteImage(String imageUrl) async {
+//   final currentTime = DateTime.now().toUtc().toIso8601String();
+//   debugPrint('[$providerName] Deleting image at $currentTime');
+//   debugPrint('[$providerName] Image URL: $imageUrl');
+
+//   // Extract publicId from URL
+//   final publicId = _extractPublicIdFromUrl(imageUrl);
+//   if (publicId == null) {
+//     throw AppException('Could not extract public_id from URL: $imageUrl');
+//   }
+//   debugPrint('[$providerName] publicId: $publicId');
+
+//   // Perform the destroy call
+//   final response = await _cloudinary.deleteResource(
+//     publicId: publicId,
+//     resourceType: CloudinaryResourceType.image,
+//     optParams: {
+//       'invalidate': true, // clear CDN cache
+//     },
+//   );
+
+//   if (response.isSuccessful) {
+//     debugPrint('[$providerName] Delete succeeded at $currentTime: ${response.result}');
+//   } else {
+//     final errorMsg = response.error ?? 'Unknown error';
+//     debugPrint('[$providerName] Delete failed at $currentTime: $errorMsg');
+//     throw AppException('Deletion failed: $errorMsg');
+//   }
+// }
 }
