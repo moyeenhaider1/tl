@@ -4,6 +4,39 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import 'package:uuid/uuid.dart';
 
+class DetectedObject extends Equatable {
+  final String label;
+  final double score;
+  final Map<String, dynamic>? box;
+
+  const DetectedObject({
+    required this.label,
+    required this.score,
+    this.box,
+  });
+
+  factory DetectedObject.fromMap(Map<String, dynamic> map) {
+    return DetectedObject(
+      label: map['label'] ?? '',
+      score: (map['score'] is double)
+          ? map['score']
+          : double.parse(map['score'].toString()),
+      box: map['box'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'label': label,
+      'score': score,
+      'box': box,
+    };
+  }
+
+  @override
+  List<Object?> get props => [label, score, box];
+}
+
 class DetectionResult extends Equatable {
   final String id;
   final String? userId;

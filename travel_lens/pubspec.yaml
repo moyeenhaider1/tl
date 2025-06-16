@@ -10,52 +10,102 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # State Management
+  # === STATE MANAGEMENT ===
+  # Provider for lightweight state management
   provider: ^6.1.1
 
-  # Firebase
+  # === FIREBASE SERVICES ===
+  # Firebase Core SDK
   firebase_core: ^2.25.3
+  # Firebase Authentication for user login/signup
   firebase_auth: ^4.17.3
+  # Firestore for storing user data and detection history
   cloud_firestore: ^4.15.3
+  # Firebase Storage for storing images (optional - can be switched off)
   firebase_storage: ^11.6.4
+  # Google Sign-In integration with Firebase Auth
+  google_sign_in: ^6.3.0
 
-  # Camera & Image Processing
+  # === CLOUDINARY STORAGE ===
+  # Cloudinary SDK for image uploads and management (optional - can be switched off)
+  cloudinary_sdk: ^5.0.0+1
+
+  # === CAMERA & IMAGE PROCESSING ===
+  # Camera access for real-time photo capture
   camera: ^0.10.5+9
+  # Image picker for selecting from gallery
   image_picker: ^1.0.7
+  # Access to device's file system for saving images
   path_provider: ^2.1.2
-
-  # HTTP & API
-  http: ^1.2.0
-  dio: ^5.4.1
-
-  # UI
-  google_fonts: ^6.1.0
-  flutter_spinkit: ^5.2.0
-  cached_network_image: ^3.3.1
-
-  # Utils
-  equatable: ^2.0.5
-  uuid: ^4.3.3
-  logger: ^2.0.2+1
+  # Permission handling for camera and storage
   permission_handler: ^11.2.0
 
-  # Localization & TTS
+  # === API & NETWORKING ===
+  # HTTP client for API requests
+  http: ^1.2.0
+  # Alternative HTTP client with more features
+  dio: ^5.4.1
+  # Environment variables for API keys
+  flutter_dotenv: ^5.1.0
+  # HTML parsing for web content
+  html: ^0.15.4
+
+  # === USER INTERFACE ===
+  # Google Fonts for typography
+  google_fonts: ^6.1.0
+  # Loading indicators and animations
+  flutter_spinkit: ^5.2.0
+  # Cached image loading for better performance
+  cached_network_image: ^3.3.1
+
+  # === LOCATION SERVICES ===
+  # Geolocation for getting device position
+  geolocator: ^10.0.1
+  # Converting coordinates to addresses
+  geocoding: ^2.1.0
+  # Maps integration for showing locations
+  google_maps_flutter: ^2.5.0
+
+  # === LOCALIZATION & ACCESSIBILITY ===
+  # Text-to-speech functionality
   flutter_tts: ^3.8.5
+  # Localization support
   flutter_localizations:
     sdk: flutter
+  # Internationalization utilities
   intl: ^0.19.0
-  google_sign_in: ^6.3.0
-  # intl:
+
+  # === UTILITIES ===
+  # Value equality comparisons
+  equatable: ^2.0.5
+  # Unique ID generation
+  uuid: ^4.3.3
+  # Structured logging
+  logger: ^2.0.2+1
+  # Local storage for app preferences
+  shared_preferences: ^2.2.1
+  # Image processing utilities
+  image: ^4.0.17
+  # Sharing functionality
+  share_plus: ^7.1.0
 
 dev_dependencies:
+  # === TESTING & DEVELOPMENT ===
+  # Flutter testing framework
   flutter_test:
     sdk: flutter
+  # Linting rules for better code quality
   flutter_lints: ^3.0.1
+  # Mocking library for tests
   mockito: ^5.4.4
+  # Code generator for mocks and other assets
   build_runner: ^2.4.8
 
 flutter:
   uses-material-design: true
   assets:
+    # App assets
     - assets/images/
     - assets/icons/
+    # Add .env file for API keys
+    - .env

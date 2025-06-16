@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+import 'package:travel_lens/core/errors/app_exception.dart';
 import 'package:travel_lens/core/services/api_config.dart';
 import 'package:travel_lens/core/services/api_service.dart';
 
@@ -16,35 +18,27 @@ class OcrService {
         imageFile: imageFile,
       );
 
-      // Handle different response formats
-      if (response is List) {
-        // Process list response format
-        if (response.isNotEmpty) {
-          // Extract text from each item and join
-          List<String> textSegments = [];
-
-          // Option 3: Using indexed loop
-          for (int i = 0; i < response.length; i++) {
-            var item = response[i];
-            if (item is Map<String, dynamic> && item.containsKey('text')) {
-              textSegments.add(item['text'].toString());
-            }
-          }
-
-          return textSegments.join('\n');
+      if (response is List && response.isNotEmpty) {
+        if (response.first is Map<String, dynamic> &&
+            response.first.containsKey('generated_text')) {
+          return response.first['generated_text'] as String;
+        } else {
+          return response.first.toString();
         }
-        return ''; // Empty response
-      } else // Process map response format
-      if (response.containsKey('generated_text')) {
-        return response['generated_text'].toString();
-      } else if (response.containsKey('text')) {
-        return response['text'].toString();
+      } else if (response is Map<String, dynamic> &&
+          response.containsKey('generated_text')) {
+        return response['generated_text'] as String;
+      } else if (response is String) {
+        return response;
       }
 
-      // Fallback: convert entire response to string
-      return response.toString();
+      return '';
     } catch (e) {
-      throw Exception('OCR extraction failed: $e');
+      debugPrint('OCR error: $e');
+      if (e is AppException) {
+        rethrow;
+      }
+      throw AppException('Failed to extract text: $e');
     }
   }
 }

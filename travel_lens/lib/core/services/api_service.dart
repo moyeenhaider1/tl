@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
-import 'package:travel_lens/core/errors/api_exception.dart';
+import 'package:travel_lens/core/errors/app_exception.dart';
 import 'package:travel_lens/core/services/api_config.dart';
 
 class ApiService {
@@ -10,134 +11,234 @@ class ApiService {
 
   ApiService({http.Client? client}) : _client = client ?? http.Client();
 
-  Future<Map<String, dynamic>> sendImageToHuggingFace({
+  Future<dynamic> sendImageToHuggingFace({
     required String modelEndpoint,
     required File imageFile,
     Map<String, dynamic>? options,
+    int retries = ApiConfig.defaultRetries,
   }) async {
-    try {
-      final url = '${ApiConfig.huggingFaceBaseUrl}/$modelEndpoint';
+    int attempts = 0;
+    late Exception lastException;
 
-      // Read image file as bytes
-      final bytes = await imageFile.readAsBytes();
+    while (attempts < retries) {
+      try {
+        attempts++;
 
-      // Prepare headers
-      final headers = {
-        'Authorization': 'Bearer ${ApiConfig.huggingFaceApiKey}',
-        'Content-Type': 'application/octet-stream',
-      };
+        final url = '${ApiConfig.huggingFaceBaseUrl}/$modelEndpoint';
 
-      // Send request
-      final response = await _client.post(
-        Uri.parse(url),
-        headers: headers,
-        body: bytes,
-      );
+        // Read image file as bytes
+        final bytes = await imageFile.readAsBytes();
 
-      // Check response
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else if (response.statusCode == 503) {
-        // Model is loading
-        final responseBody = json.decode(response.body);
-        final estimatedTime = responseBody['estimated_time'] ?? 20;
+        // Determine content type based on file extension
+        final contentType = _getContentTypeFromFile(imageFile);
 
-        // Wait and retry
-        await Future.delayed(Duration(seconds: estimatedTime));
-        return sendImageToHuggingFace(
-          modelEndpoint: modelEndpoint,
-          imageFile: imageFile,
-          options: options,
+        // Prepare headers
+        final headers = {
+          'Authorization': 'Bearer ${ApiConfig.huggingFaceApiKey}',
+          'Content-Type': contentType,
+        };
+
+        // Send request
+        final response = await _client
+            .post(
+              Uri.parse(url),
+              headers: headers,
+              body: bytes,
+            )
+            .timeout(const Duration(seconds: ApiConfig.defaultTimeout));
+
+        // Check response
+        if (response.statusCode == 200) {
+          return json.decode(response.body);
+        } else if (response.statusCode == 503) {
+          // Model is loading
+          final responseBody = json.decode(response.body);
+          final estimatedTime =
+              responseBody['estimated_time'] ?? ApiConfig.retryDelay;
+
+          // Wait and retry
+          await Future.delayed(Duration(seconds: min(estimatedTime, 20)));
+          continue; // Retry without counting as an attempt
+        } else {
+          throw AppException(
+            'API request failed: ${response.body}',
+            code: response.statusCode.toString(),
+          );
+        }
+      } on AppException catch (e) {
+        lastException = e;
+        // Exponential backoff
+        if (attempts < retries) {
+          await Future.delayed(
+            Duration(seconds: ApiConfig.retryDelay * attempts),
+          );
+        }
+      } catch (e) {
+        lastException = AppException(
+          'Error sending image to Hugging Face: $e',
         );
-      } else {
-        throw ApiException(
-          code: response.statusCode,
-          message: 'API request failed: ${response.body}',
-        );
+        // Exponential backoff
+        if (attempts < retries) {
+          await Future.delayed(
+            Duration(seconds: ApiConfig.retryDelay * attempts),
+          );
+        }
       }
-    } catch (e) {
-      throw ApiException(
-        code: 500,
-        message: 'Error sending image to Hugging Face: $e',
-      );
+    }
+
+    // All retries failed
+    throw lastException;
+  }
+
+// Add this helper function to determine content type
+  String _getContentTypeFromFile(File file) {
+    final extension = file.path.toLowerCase().split('.').last;
+
+    switch (extension) {
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'gif':
+        return 'image/gif';
+      case 'bmp':
+        return 'image/bmp';
+      case 'webp':
+        return 'image/webp';
+      case 'tiff':
+      case 'tif':
+        return 'image/tiff';
+      default:
+        throw AppException('Unsupported image format: .$extension');
     }
   }
 
-  Future<Map<String, dynamic>> sendTextToHuggingFace({
+  Future<dynamic> sendTextToHuggingFace({
     required String modelEndpoint,
     required String text,
     Map<String, dynamic>? options,
+    int retries = ApiConfig.defaultRetries,
   }) async {
-    try {
-      final url = '${ApiConfig.huggingFaceBaseUrl}/$modelEndpoint';
+    int attempts = 0;
+    late Exception lastException;
 
-      // Prepare headers
-      final headers = {
-        'Authorization': 'Bearer ${ApiConfig.huggingFaceApiKey}',
-        'Content-Type': 'application/json',
-      };
+    while (attempts < retries) {
+      try {
+        attempts++;
 
-      // Prepare body
-      final body = json.encode({
-        'inputs': text,
-        'options': options ?? {},
-      });
+        final url = '${ApiConfig.huggingFaceBaseUrl}/$modelEndpoint';
 
-      // Send request
-      final response = await _client.post(
-        Uri.parse(url),
-        headers: headers,
-        body: body,
-      );
+        // Prepare headers
+        final headers = {
+          'Authorization': 'Bearer ${ApiConfig.huggingFaceApiKey}',
+          'Content-Type': 'application/json',
+        };
 
-      // Check response
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else if (response.statusCode == 503) {
-        // Model is loading
-        final responseBody = json.decode(response.body);
-        final estimatedTime = responseBody['estimated_time'] ?? 20;
+        // Prepare body
+        final body = json.encode({
+          'inputs': text,
+          'options': options ?? {},
+        });
 
-        // Wait and retry
-        await Future.delayed(Duration(seconds: estimatedTime));
-        return sendTextToHuggingFace(
-          modelEndpoint: modelEndpoint,
-          text: text,
-          options: options,
+        // Send request
+        final response = await _client
+            .post(
+              Uri.parse(url),
+              headers: headers,
+              body: body,
+            )
+            .timeout(const Duration(seconds: ApiConfig.defaultTimeout));
+
+        // Check response
+        if (response.statusCode == 200) {
+          return json.decode(response.body);
+        } else if (response.statusCode == 503) {
+          // Model is loading
+          final responseBody = json.decode(response.body);
+          final estimatedTime =
+              responseBody['estimated_time'] ?? ApiConfig.retryDelay;
+
+          // Wait and retry
+          await Future.delayed(Duration(seconds: min(estimatedTime, 20)));
+          continue; // Retry without counting as an attempt
+        } else {
+          throw AppException(
+            'API request failed: ${response.body}',
+            code: response.statusCode.toString(),
+          );
+        }
+      } on AppException catch (e) {
+        lastException = e;
+        // Exponential backoff
+        if (attempts < retries) {
+          await Future.delayed(
+            Duration(seconds: ApiConfig.retryDelay * attempts),
+          );
+        }
+      } catch (e) {
+        lastException = AppException(
+          'Error sending text to Hugging Face: $e',
         );
-      } else {
-        throw ApiException(
-          code: response.statusCode,
-          message: 'API request failed: ${response.body}',
-        );
+        // Exponential backoff
+        if (attempts < retries) {
+          await Future.delayed(
+            Duration(seconds: ApiConfig.retryDelay * attempts),
+          );
+        }
       }
-    } catch (e) {
-      throw ApiException(
-        code: 500,
-        message: 'Error sending text to Hugging Face: $e',
-      );
     }
+
+    // All retries failed
+    throw lastException;
   }
 
-  Future<Map<String, dynamic>> getWikipediaInfo(String title) async {
-    try {
-      final url = '${ApiConfig.wikipediaBaseUrl}/page/summary/$title';
+  // Add method for HTTP GET requests with retry
+  Future<dynamic> get(
+    String url, {
+    Map<String, String>? headers,
+    int retries = ApiConfig.defaultRetries,
+  }) async {
+    int attempts = 0;
+    late Exception lastException;
 
-      final response = await _client.get(Uri.parse(url));
+    while (attempts < retries) {
+      try {
+        attempts++;
 
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw ApiException(
-          code: response.statusCode,
-          message: 'Wikipedia API request failed: ${response.body}',
-        );
+        final response = await _client
+            .get(
+              Uri.parse(url),
+              headers: headers,
+            )
+            .timeout(const Duration(seconds: ApiConfig.defaultTimeout));
+
+        if (response.statusCode == 200) {
+          return json.decode(response.body);
+        } else {
+          throw AppException(
+            'GET request failed: ${response.body}',
+            code: response.statusCode.toString(),
+          );
+        }
+      } on AppException catch (e) {
+        lastException = e;
+        if (attempts < retries) {
+          await Future.delayed(
+            Duration(seconds: ApiConfig.retryDelay * attempts),
+          );
+        }
+      } catch (e) {
+        lastException = AppException('Error in GET request: $e');
+        if (attempts < retries) {
+          await Future.delayed(
+            Duration(seconds: ApiConfig.retryDelay * attempts),
+          );
+        }
       }
-    } catch (e) {
-      throw ApiException(
-        code: 500,
-        message: 'Error fetching Wikipedia info: $e',
-      );
     }
+
+    // All retries failed
+    throw lastException;
   }
 }

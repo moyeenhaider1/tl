@@ -4,6 +4,8 @@ import 'package:travel_lens/data/providers/auth_provider.dart';
 import 'package:travel_lens/data/providers/detection_provider.dart';
 import 'package:travel_lens/ui/screens/camera_screen.dart';
 import 'package:travel_lens/ui/widgets/auth_status_widget.dart';
+import 'package:travel_lens/ui/widgets/processing_view.dart';
+import 'package:travel_lens/ui/widgets/result_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -19,7 +21,6 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('TravelLens'),
         actions: [
-          // Add user greeting in the app bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Center(
@@ -34,8 +35,22 @@ class HomeScreen extends StatelessWidget {
       body: Consumer<DetectionProvider>(
         builder: (context, detectionProvider, _) {
           if (detectionProvider.capturedImage == null) {
+            // Show welcome screen when no image
             return _buildWelcomeView(context);
+          } else if (detectionProvider.isProcessing) {
+            // Show processing screen during API calls
+            return ProcessingView(
+              provider: detectionProvider,
+              onRetry: () => detectionProvider.retryProcessing(),
+            );
+          } else if (detectionProvider.status == ProcessingStatus.error) {
+            // Show error state
+            return ProcessingView(
+              provider: detectionProvider,
+              onRetry: () => detectionProvider.retryProcessing(),
+            );
           } else {
+            // Show results
             return _buildResultsView(context, detectionProvider);
           }
         },
@@ -95,7 +110,6 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildResultsView(BuildContext context, DetectionProvider provider) {
-    // Existing results view code...
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
@@ -112,28 +126,65 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 24),
 
         if (provider.detectedObject != null) ...[
-          _buildInfoCard(
-              context, 'Detected', provider.detectedObject!, Icons.visibility),
-          const SizedBox(height: 16),
+          ResultCard(
+            title: 'Detected',
+            content: provider.detectedObject!,
+            icon: Icons.visibility,
+          ),
         ],
 
         if (provider.extractedText != null) ...[
-          _buildInfoCard(context, 'Extracted Text', provider.extractedText!,
-              Icons.text_fields),
-          const SizedBox(height: 16),
+          ResultCard(
+            title: 'Extracted Text',
+            content: provider.extractedText!,
+            icon: Icons.text_fields,
+            canSpeak: true,
+          ),
         ],
 
         if (provider.translatedText != null) ...[
-          _buildInfoCard(context, 'Translation', provider.translatedText!,
-              Icons.translate),
-          const SizedBox(height: 16),
+          ResultCard(
+            title: 'Translation',
+            content: provider.translatedText!,
+            icon: Icons.translate,
+            canSpeak: true,
+          ),
         ],
 
         if (provider.summary != null) ...[
-          _buildInfoCard(
-              context, 'Summary', provider.summary!, Icons.summarize),
-          const SizedBox(height: 16),
+          ResultCard(
+            title: 'Additional Information',
+            content: provider.summary!,
+            icon: Icons.info_outline,
+            canSpeak: true,
+          ),
         ],
+
+        // Actions row
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => provider.resetResults(),
+                icon: const Icon(Icons.refresh),
+                label: const Text('New Scan'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  // TODO: Implement share functionality
+                },
+                icon: const Icon(Icons.share),
+                label: const Text('Share'),
+              ),
+            ],
+          ),
+        ),
 
         // Add some space at the bottom for the FAB
         const SizedBox(height: 80),
