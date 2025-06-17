@@ -79,12 +79,30 @@ class ApiService {
           final estimatedTime =
               responseBody['estimated_time'] ?? ApiConfig.retryDelay;
 
+          debugPrint(
+              '[ApiService] Model is loading, waiting ${estimatedTime}s...');
           // Wait and retry
           await Future.delayed(Duration(seconds: min(estimatedTime, 20)));
           continue; // Retry without counting as an attempt
-        } else {
+        } else if (response.statusCode == 404) {
+          // Model not found - provide more helpful error message
+          debugPrint('[ApiService] Model not found: $modelEndpoint');
           throw AppException(
-            'API request failed: ${response.body}',
+            'Model "$modelEndpoint" not found or not accessible. The model may not exist or may not support the Inference API.',
+            code: '404',
+          );
+        } else if (response.statusCode == 401) {
+          // Unauthorized - API key issue
+          throw AppException(
+            'Unauthorized access. Please check your Hugging Face API key.',
+            code: '401',
+          );
+        } else {
+          // Other errors
+          debugPrint(
+              '[ApiService] API Error ${response.statusCode}: ${response.body}');
+          throw AppException(
+            'API request failed (${response.statusCode}): ${response.body}',
             code: response.statusCode.toString(),
           );
         }

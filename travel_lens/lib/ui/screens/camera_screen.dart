@@ -5,12 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
-import 'package:travel_lens/core/services/location_service.dart';
-import 'package:travel_lens/data/models/detection_result.dart';
 import 'package:travel_lens/data/providers/auth_provider.dart';
-import 'package:travel_lens/data/providers/detection_provider.dart';
-import 'package:travel_lens/data/providers/history_provider.dart';
-import 'package:travel_lens/ui/screens/auth/login_screen.dart';
+import 'package:travel_lens/ui/screens/image_processing_screen.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -25,8 +21,7 @@ class _CameraScreenState extends State<CameraScreen>
   List<CameraDescription> cameras = [];
   bool _isCameraInitialized = false;
   bool _isCapturing = false;
-  final LocationService _locationService = LocationService();
-  final ImagePicker _imagePicker = ImagePicker(); // Add this
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -38,21 +33,41 @@ class _CameraScreenState extends State<CameraScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    controller?.dispose();
+    _disposeController();
     super.dispose();
+  }
+
+  void _disposeController() {
+    if (controller != null) {
+      controller!.dispose();
+      controller = null;
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = false;
+        });
+      }
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive) {
-      controller?.dispose();
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _disposeController();
     } else if (state == AppLifecycleState.resumed) {
-      _initializeCamera();
+      if (controller == null) {
+        _initializeCamera();
+      }
     }
   }
 
   Future<void> _initializeCamera() async {
+    if (!mounted) return;
+
     try {
+      // Dispose existing controller if any
+      _disposeController();
+
       // Check and request camera permissions
       final status = await Permission.camera.request();
       if (status != PermissionStatus.granted) {
@@ -63,6 +78,8 @@ class _CameraScreenState extends State<CameraScreen>
         }
         return;
       }
+
+      if (!mounted) return;
 
       cameras = await availableCameras();
 
@@ -75,10 +92,12 @@ class _CameraScreenState extends State<CameraScreen>
         return;
       }
 
+      if (!mounted) return;
+
       controller = CameraController(cameras[0], ResolutionPreset.high);
       await controller!.initialize();
 
-      if (mounted) {
+      if (mounted && controller != null && controller!.value.isInitialized) {
         setState(() {
           _isCameraInitialized = true;
         });
@@ -94,7 +113,8 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   Future<void> _takePicture() async {
-    if (!_isCameraInitialized || _isCapturing || !mounted) return;
+    if (!_isCameraInitialized || _isCapturing || !mounted || controller == null)
+      return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -108,8 +128,8 @@ class _CameraScreenState extends State<CameraScreen>
 
       if (!mounted) return;
 
-      // Process the captured image
-      await _processImage(File(image.path), authProvider);
+      // Show image preview and processing view, then pop when done
+      await _showImagePreviewAndProcess(File(image.path), authProvider);
     } catch (e) {
       debugPrint('Error taking picture: $e');
 
@@ -147,8 +167,8 @@ class _CameraScreenState extends State<CameraScreen>
 
       if (!mounted) return;
 
-      // Process the selected image
-      await _processImage(File(pickedFile.path), authProvider);
+      // Show image preview and processing view, then pop when done
+      await _showImagePreviewAndProcess(File(pickedFile.path), authProvider);
     } catch (e) {
       debugPrint('Error picking image: $e');
 
@@ -160,127 +180,48 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  // Common method to process images from both camera and gallery
-  Future<void> _processImage(File imageFile, AuthProvider authProvider) async {
+  // Show image preview and processing view, then pop when done
+  Future<void> _showImagePreviewAndProcess(
+      File imageFile, AuthProvider authProvider) async {
     if (!mounted) return;
 
-    setState(() {
-      _isCapturing = true;
-    });
+    // Navigate to image preview and processing screen
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ImageProcessingScreen(
+          imageFile: imageFile,
+          authProvider: authProvider,
+        ),
+      ),
+    );
+
+    // After processing is complete and user returns, pop the camera screen
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Widget _buildCameraPreview() {
+    if (controller == null || !controller!.value.isInitialized) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
     try {
-      // Process with detection provider
-      final detectionProvider =
-          Provider.of<DetectionProvider>(context, listen: false);
-      await detectionProvider.processImage(imageFile);
-
-      // Get location if permission granted
-      double? latitude;
-      double? longitude;
-      String? placeName;
-
-      try {
-        final position = await _locationService.getCurrentLocation();
-        latitude = position.latitude;
-        longitude = position.longitude;
-        placeName =
-            await _locationService.getPlaceFromCoordinates(latitude, longitude);
-
-        debugPrint('Location detected: $placeName ($latitude, $longitude)');
-      } catch (e) {
-        debugPrint('Could not get location: $e');
-        // Continue without location
-      }
-
-      // Save to history if authenticated - check mounted again after async work
-      if (!mounted) return;
-
-      if (authProvider.isAuthenticated) {
-        // Guard against widget unmounting during the process
-        if (!mounted) return;
-
-        final historyProvider =
-            Provider.of<HistoryProvider>(context, listen: false);
-
-        final result = DetectionResult.create(
-          userId: authProvider.user?.uid,
-          image: imageFile,
-        ).copyWith(
-          detectedObject: detectionProvider.detectedObject,
-          extractedText: detectionProvider.extractedText,
-          translatedText: detectionProvider.translatedText,
-          summary: detectionProvider.summary,
-        );
-
-        // Handle any errors during saving without crashing
-        try {
-          await historyProvider.saveResult(result, authProvider);
-        } catch (e) {
-          debugPrint('Error saving result to history: $e');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to save to history: $e')),
-            );
-          }
-        }
-      } else {
-        // Show login prompt for guest users
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Sign in to Save'),
-              content: const Text(
-                'This result will not be saved to your history. Sign in to save your discoveries.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const LoginScreen()),
-                    );
-                  },
-                  child: const Text('Sign In'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                  },
-                  child: const Text('Continue as Guest'),
-                ),
-              ],
-            ),
-          );
-        }
-      }
-
-      // Use a slight delay before navigating back to ensure all async operations are truly complete
-      // This helps avoid any race conditions with widget state
-      if (mounted) {
-        // Small delay to ensure all processing is truly complete
-        await Future.delayed(const Duration(milliseconds: 100));
-        if (mounted) {
-          // Check mounted again after the delay
-          Navigator.of(context).pop();
-        }
-      }
+      return CameraPreview(controller!);
     } catch (e) {
-      debugPrint('Error processing image: $e');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error processing image: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCapturing = false;
-        });
-      }
+      debugPrint('Error building camera preview: $e');
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error, size: 48, color: Colors.red),
+            SizedBox(height: 16),
+            Text('Camera preview error'),
+          ],
+        ),
+      );
     }
   }
 
@@ -290,14 +231,14 @@ class _CameraScreenState extends State<CameraScreen>
       appBar: AppBar(
         title: const Text('Camera'),
       ),
-      body: _isCameraInitialized
+      body: _isCameraInitialized && controller != null
           ? Stack(
               children: [
                 // Camera preview
                 SizedBox(
                   height: double.infinity,
                   width: double.infinity,
-                  child: CameraPreview(controller!),
+                  child: _buildCameraPreview(),
                 ),
 
                 // Capture buttons at the bottom
